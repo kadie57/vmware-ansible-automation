@@ -99,9 +99,14 @@ ansible --version
 ansible-rulebook --version
 ```
 
-### 8. Run EDA rulebook
+### 8. Run plugins 
 ```
-ansible-rulebook -r ansible/rulebooks/detect_new_vm.yml -i inventory.yml
+python3 monitor_vm_log.py
+```
+
+### 9. Run EDA rulebook
+```
+ansible-rulebook -r ansible/rulebooks/add_vm_rule.yml -i inventory.yml
 ```
 
 ## Conclusion
