@@ -1,0 +1,131 @@
+---
+- name: add vcenter vm to netbox
+  hosts: localhost
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: /home/khanh/vmware-ansible/bin/python
+  pre_tasks:
+    - name: vcenter variables
+      include_vars: /home/khanh/netbox/vars/vars_vcenter.yml
+
+    - name: netbox variables
+      include_vars: /home/khanh/netbox/vars/vars_netbox.yml
+
+  tasks:
+    - name: get VM info
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        name: "New Virtual Machine"
+      register: vm_info
+
+    - name: debug
+      ansible.builtin.debug:
+        msg: "{{ vm_info }}"
+
+    - name: Set VM info variables
+      set_fact:
+        vm_name: "{{ vm_info.instance.hw_name }}"
+        vm_cluster: "{{ vm_info.instance.hw_cluster }}"
+        vm_vcpus: "{{ vm_info.instance.hw_processor_count }}"
+        vm_memory: "{{ vm_info.instance.hw_memtotal_mb }}"
+
+    - name: show info
+      ansible.builtin.debug:
+        msg: |
+          {{ vm_name }}
+          {{ vm_cluster }}
+          {{ vm_vcpus }}
+          {{ vm_memory }}
+
+    - name: add info to netbox
+      netbox.netbox.netbox_virtual_machine: 
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data: 
+          name: "{{ vm_name }}"
+          status: "{{ netbox_status }}"
+          cluster: "{{ vm_cluster }}"
+          vcpus: "{{ vm_vcpus }}"
+          memory: "{{ vm_memory }}"
+          custom_fields:
+            ServerID: "somethingcool"
+            ServerName: "somethingcool"
+            ServerType: "Server"
+            Partition: "SVF"
+            Cloud_Placement: "Duy Tan"
+            PriAdmin: "Khanh"
+            OS_full: "Ubuntu"
+            IP_ILO_IDRAC: "ILO"
+            PhysicalOrVirtual: "Virtual"
+            Environment: "Cloud-TEST"
+        state: present 
+
+    - name: Start VM
+      vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        name: "{{ vm_name }}"
+        validate_certs: false
+        state: powered-on
+        
+    - name: wait 90s
+      ansible.builtin.pause:
+        seconds: 90
+
+    - name: get VM IP
+      community.vmware.vmware_guest_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs }}"
+        name: "{{ vm_name }}"
+      register: vm_info2
+
+    - name: debug IP
+      ansible.builtin.debug:
+        msg: "{{ vm_info2 }}"
+
+    - name: Set VM IP variables
+      set_fact:
+        vm_ip: "{{ vm_info2.instance.hw_eth0.ipaddresses | map('ipaddr', 'ipv4') | select('!=', false) | first }}/24"
+
+    - name: show IP
+      ansible.builtin.debug:
+        msg: "{{ vm_ip }}"
+    - name: Create vm interface
+      netbox.netbox.netbox_vm_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          name: "eth0"
+          virtual_machine: "{{ vm_name }}"
+
+    - name: Create IP address
+      netbox.netbox.netbox_ip_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          address: "{{ vm_ip }}"
+          status: active
+          assigned_object:
+            name: "eth0"
+            virtual_machine: "{{ vm_name }}"
+        state: present
+
+    - name: add IP to netbox
+      netbox.netbox.netbox_virtual_machine: 
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data: 
+          name: "{{ vm_name }}"
+          primary_ip4: "{{ vm_ip }}"
+        state: present
