@@ -1,0 +1,17 @@
+---
+- name: vCenter VM Creation Webhook Handler
+  hosts: localhost
+  sources:
+    - name: webhook_listener
+      ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+
+  rules:
+    - name: Run playbook when VM created
+      condition: event.payload.event == "VM_CREATED"
+      action:
+        run_playbook:
+          name: add_vcenter_vm.yml
+          extra_vars:
+            vm_name: "{{ event.payload.details.vm_name }}"
