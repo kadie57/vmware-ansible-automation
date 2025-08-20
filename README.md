@@ -18,19 +18,16 @@ This repository showcases a **simple lab project** that integrates two powerful 
 ansible-eda-vcenter-lab/
 │── README.md 
 │── docs/
-│ └── workflow.png #
+│ └── workflow.png 
 │── ansible/
 │ ├── playbooks/
-│ │ └── add_vm_to_netbox.yml
+│ │ └── add_vcenter_vm.yml
 │ ├── rulebooks/
-│ │ └── detect_new_vm.yml
-│ └── roles/
-│ └── netbox_vm/...
+│ │ └── add_vm_ruleyml
+│ └── inventory.ini
 │── plugins/
-│ └── sources/
 │ └── vcenter_log.py # Custom source plugin
-│── examples/
-│ └── demo_log.txt # Sample log file
+
 
 ```
 
