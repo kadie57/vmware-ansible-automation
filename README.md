@@ -28,7 +28,6 @@ ansible-eda-vcenter-lab/
 │── plugins/
 │ └── vcenter_log.py # Custom source plugin
 
-
 ```
 
 
